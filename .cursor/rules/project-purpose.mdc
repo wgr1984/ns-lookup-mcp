@@ -1,0 +1,44 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Purpose and Technology Stack
+
+<rule>
+name: project_purpose
+description: Defines the project's purpose and technology stack
+filters:
+  - type: content
+    pattern: "nslookup"
+  - type: file_extension
+    pattern: "\\.py$"
+
+actions:
+  - type: suggest
+    message: |
+      This project is a simple MCP (Model Context Protocol) Server that exposes the nslookup command functionality.
+      
+      Technology Stack:
+      - Python 3
+      - uv as dependency manager
+      - pyproject.toml for project configuration
+      
+      Key Features:
+      - Exposes nslookup command functionality
+      - Simple and focused microservice
+      - Modern Python tooling with uv and pyproject.toml
+
+examples:
+  - input: |
+      # Example of project structure
+      pyproject.toml
+      src/
+        __init__.py
+        main.py
+    output: "Correct project structure following the defined technology stack"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule> 

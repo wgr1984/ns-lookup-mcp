@@ -1,0 +1,57 @@
+---
+description: 
+globs: *.py
+alwaysApply: false
+---
+# Respect Manual Changes
+
+Rule to ensure manual code changes are preserved and understood.
+
+<rule>
+name: respect_manual_changes
+description: Ensure manual code changes are respected and understood before making modifications
+filters:
+  - type: content
+    pattern: ".*"  # Apply to all content since manual changes can happen anywhere
+
+actions:
+  - type: suggest
+    message: |
+      When encountering manual changes in the code:
+
+      1. Preservation Guidelines:
+         - Do not automatically revert manual changes
+         - Try to understand the intent behind the changes
+         - If changes seem unusual, ask for clarification
+         - Preserve manual optimizations and fixes
+
+      2. Before modifying manually changed code:
+         - Review the changes carefully
+         - Understand the context and purpose
+         - Consider the implications of modifications
+         - Ask for clarification if intent is unclear
+
+      3. When in doubt:
+         - Ask about the purpose of manual changes
+         - Request explanation of unusual patterns
+         - Seek confirmation before modifying
+         - Document the reasoning in comments
+
+      4. Best practices:
+         - Keep track of manual modifications
+         - Document reasons for manual changes
+         - Consider the broader impact
+         - Maintain a dialogue about significant changes
+
+examples:
+  - input: |
+      // Manual optimization to prevent unnecessary redraws
+      if (!shouldUpdate && prevState === currentState) {
+        return;
+      }
+    output: "Before modifying this optimization, understand why it was added manually"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule> 

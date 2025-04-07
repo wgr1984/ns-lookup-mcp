@@ -1,0 +1,33 @@
+[project]
+name = "ns-lookup-mcp"
+version = "0.1.0"
+description = "A simple MCP Server that exposes the nslookup command functionality"
+authors = [
+    {name = "Wolfgang Reithmeier", email = "w.reithmeier@gmail.com"}
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.4.0",
+    "mcp-server>=0.1.0",
+]
+requires-python = ">=3.13"
+
+[project.scripts]
+ns-lookup-mcp = "ns_lookup_mcp:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "UP", "PL", "RUF"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
