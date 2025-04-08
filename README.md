@@ -86,6 +86,28 @@ The server provides the following prompt:
 }
 ```
 
+### MCP Client Configuration
+
+To use this server with an MCP client, add the following configuration to your client's settings:
+
+```json
+{
+  "mcpServers": {
+    "nslookup": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "[workspace]/ns-lookup-mcp",
+        "ns-lookup-mcp"
+      ]
+    }
+  }
+}
+```
+
+Replace `[workspace]` with the actual path to your workspace directory.
+
 ### Example Output
 
 The server returns DNS lookup results in a clean, concise format:
