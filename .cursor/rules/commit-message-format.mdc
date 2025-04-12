@@ -1,0 +1,69 @@
+---
+description: on commit messages
+globs: 
+alwaysApply: false
+---
+# Commit Message Format
+
+Standards for writing commit messages in the repository.
+
+<rule>
+name: commit_message_format
+description: Standards for writing commit messages with ticket numbers and change lists
+filters:
+  # Match git commit events
+  - type: event
+    pattern: "git_commit"
+
+actions:
+  - type: suggest
+    message: |
+      When writing commit messages:
+
+      1. Format:
+         ```
+         [TICKET-123] Short descriptive title
+
+         - Change 1
+         - Change 2
+         - Change 3
+         ```
+
+      2. Guidelines:
+         - Keep the title line short (50-72 characters)
+         - Include ticket number at the beginning if available
+         - List changes as bullet points below
+         - Use present tense
+         - Be specific and descriptive
+
+      3. Examples:
+         ```
+         [TICKET-123] Add user authentication
+
+         - Add login form component
+         - Implement JWT token handling
+         - Add protected route middleware
+         ```
+
+         ```
+         Fix broken image upload
+
+         - Fix file size validation
+         - Add error handling for failed uploads
+         - Update upload progress indicator
+         ```
+
+examples:
+  - input: |
+      git commit -m "fix some stuff"
+    output: |
+      [TICKET-123] Fix image upload issues
+
+      - Fix file size validation
+      - Add error handling for failed uploads
+      - Update upload progress indicator
+
+metadata:
+  priority: high
+  version: 1.0
+</rule> 

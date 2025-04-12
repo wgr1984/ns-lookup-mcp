@@ -3,8 +3,7 @@ Server implementation for the NS Lookup MCP Server.
 """
 
 import subprocess
-import signal
-import asyncio
+import sys
 from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field
@@ -22,6 +21,11 @@ from mcp.types import (
     INTERNAL_ERROR,
 )
 
+from .logging import setup_logging
+
+# Set up logging
+logger = setup_logging()
+
 class NSLookupRequest(BaseModel):
     """Parameters for nslookup command."""
     hostname: Annotated[str, Field(description="Domain name or IP address to look up")]
@@ -36,9 +40,11 @@ class NSLookupRequest(BaseModel):
 def create_server() -> Server:
     """Create and configure the NS Lookup MCP server."""
     server = Server("mcp-nslookup")
+    logger.info("Creating NS Lookup MCP server")
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
+        logger.debug("Listing available tools")
         return [
             Tool(
                 name="nslookup",
@@ -49,6 +55,7 @@ def create_server() -> Server:
 
     @server.list_prompts()
     async def list_prompts() -> list[Prompt]:
+        logger.debug("Listing available prompts")
         return [
             Prompt(
                 name="nslookup",
@@ -70,12 +77,15 @@ def create_server() -> Server:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+        logger.info(f"Calling tool {name} with arguments: {arguments}")
         try:
             args = NSLookupRequest(**arguments)
         except ValueError as e:
+            logger.error(f"Invalid arguments: {e}")
             raise ErrorData(code=INVALID_PARAMS, message=str(e))
 
         if not args.hostname:
+            logger.error("Hostname is required")
             raise ErrorData(code=INVALID_PARAMS, message="Hostname is required")
 
         try:
@@ -84,6 +94,7 @@ def create_server() -> Server:
                 cmd.append(args.server)
             cmd.append(args.hostname)
             
+            logger.debug(f"Executing command: {' '.join(cmd)}")
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -100,8 +111,10 @@ def create_server() -> Server:
                 elif line.startswith('Name:') or line.startswith('Address:'):
                     formatted_lines.append(line)
             
+            logger.info(f"Successfully looked up {args.hostname}")
             return [TextContent(type="text", text='\n'.join(formatted_lines))]
         except subprocess.CalledProcessError as e:
+            logger.error(f"nslookup command failed: {e.stderr}")
             raise ErrorData(
                 code=INTERNAL_ERROR,
                 message=f"nslookup command failed: {e.stderr}"
@@ -109,7 +122,9 @@ def create_server() -> Server:
 
     @server.get_prompt()
     async def get_prompt(name: str, arguments: dict | None) -> GetPromptResult:
+        logger.info(f"Getting prompt {name} with arguments: {arguments}")
         if not arguments or "hostname" not in arguments:
+            logger.error("Hostname is required")
             raise ErrorData(code=INVALID_PARAMS, message="Hostname is required")
 
         hostname = arguments["hostname"]
@@ -121,6 +136,7 @@ def create_server() -> Server:
                 cmd.append(server)
             cmd.append(hostname)
             
+            logger.debug(f"Executing command: {' '.join(cmd)}")
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -137,6 +153,19 @@ def create_server() -> Server:
                 elif line.startswith('Name:') or line.startswith('Address:'):
                     formatted_lines.append(line)
             
+            if not formatted_lines:
+                logger.warning(f"No DNS records found for {hostname}")
+                return GetPromptResult(
+                    description=f"No DNS records found for {hostname}",
+                    messages=[
+                        PromptMessage(
+                            role="user",
+                            content=TextContent(type="text", text="No DNS records found")
+                        )
+                    ],
+                )
+            
+            logger.info(f"Successfully looked up {hostname}")
             return GetPromptResult(
                 description=f"DNS lookup results for {hostname}",
                 messages=[
@@ -147,12 +176,25 @@ def create_server() -> Server:
                 ],
             )
         except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.strip() if e.stderr else "Unknown error occurred"
+            logger.error(f"nslookup command failed: {error_msg}")
             return GetPromptResult(
                 description=f"Failed to perform DNS lookup for {hostname}",
                 messages=[
                     PromptMessage(
                         role="user",
-                        content=TextContent(type="text", text=str(e.stderr))
+                        content=TextContent(type="text", text=f"Error: {error_msg}")
+                    )
+                ],
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            return GetPromptResult(
+                description=f"Failed to perform DNS lookup for {hostname}",
+                messages=[
+                    PromptMessage(
+                        role="user",
+                        content=TextContent(type="text", text=f"Error: {str(e)}")
                     )
                 ],
             )
@@ -161,44 +203,9 @@ def create_server() -> Server:
 
 async def run_server() -> None:
     """Run the NS Lookup MCP server."""
+    logger.info("Starting NS Lookup MCP server")
     server = create_server()
-    
-    # Create an event to signal shutdown
-    shutdown_event = asyncio.Event()
-
-    # Set up signal handlers
-    def handle_sigint():
-        shutdown_event.set()
-    
-    loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, handle_sigint)
-    loop.add_signal_handler(signal.SIGTERM, handle_sigint)
-
     options = server.create_initialization_options()
-    try:
-        async with stdio_server() as (read_stream, write_stream):
-            # Create a task for the server
-            server_task = asyncio.create_task(
-                server.run(read_stream, write_stream, options, raise_exceptions=True)
-            )
-            
-            # Create a task for the shutdown event
-            shutdown_task = asyncio.create_task(shutdown_event.wait())
-            
-            # Wait for either the server to complete or shutdown signal
-            done, pending = await asyncio.wait(
-                [server_task, shutdown_task],
-                return_when=asyncio.FIRST_COMPLETED
-            )
-            
-            # If we got a shutdown signal, cancel the server task
-            if shutdown_event.is_set():
-                server_task.cancel()
-                try:
-                    await server_task
-                except asyncio.CancelledError:
-                    pass
-    finally:
-        # Clean up signal handlers
-        loop.remove_signal_handler(signal.SIGINT)
-        loop.remove_signal_handler(signal.SIGTERM) 
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(read_stream, write_stream, options, raise_exceptions=True)
+    logger.info("NS Lookup MCP server stopped") 
