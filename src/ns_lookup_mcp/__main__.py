@@ -2,6 +2,7 @@
 Main entry point for the NS Lookup MCP Server.
 """
 
-from ns_lookup_mcp import main
+from .server import run_server
 
-main() 
+if __name__ == "__main__":
+    run_server() 
